@@ -38,23 +38,27 @@ Adafruit_LvGL_Glue glue;
 
 void setup() {
   Serial.begin(115200);
-  while(!Serial && !Serial.available()){};
+  
+  // wait until serial attaches or 2s passes...
+  while(!Serial && !Serial.available() && millis() < 4000){};
   Log.begin(LOG_LEVEL_VERBOSE, &Serial);
 
   pinMode(LCD_BACKLIGHT, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(WIO_KEY_A, INPUT_PULLUP);
+  pinMode(WIO_KEY_B, INPUT_PULLUP);
+  pinMode(WIO_KEY_C, INPUT_PULLUP);
   pinMode(WIO_5S_UP, INPUT_PULLUP);
   pinMode(WIO_5S_DOWN, INPUT_PULLUP);
   pinMode(WIO_5S_LEFT, INPUT_PULLUP);
   pinMode(WIO_5S_RIGHT, INPUT_PULLUP);
   pinMode(WIO_5S_PRESS, INPUT_PULLUP);
-  Log.notice(F("GPIO initialization completed." CR));
+  Log.noticeln(F("GPIO initialization completed."));
 
   tft.begin();
   tft.setRotation(3);
   digitalWrite(LCD_BACKLIGHT, HIGH);
-
-  Log.notice(F("TFT initialization completed." CR));
+  Log.noticeln(F("TFT initialization completed."));
   
   // Initialize glue, passing in address of display
   LvGLStatus status = glue.begin(&tft);
@@ -62,12 +66,13 @@ void setup() {
     Log.fatalln(F("LvGL initialization failed: %d"), (int)status);
     for(;;);
   }
-  
+
   // Create simple label centered on screen
   lv_obj_t *label = lv_label_create(lv_scr_act(), NULL);
-  lv_label_set_text(label, "Hello Arduino!");
+  lv_label_set_text(label, "Hello Arduino");
   lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, 0);
-  Log.notice(F("LvGL initialization completed." CR));
+  Log.noticeln(F("LvGL initialization completed."));
+
 }
 
 static bool state = HIGH;
