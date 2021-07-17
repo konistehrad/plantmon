@@ -121,7 +121,9 @@ void setup() {
   lv_scr_load(Screen1);
   Log.noticeln("LvGL initialization completed.");
 
-  if (!(climateSensorInitialized = climateSensor.beginI2C())) {
+  Wire.begin();
+  Wire.setClock(1000000ul);
+  if (!(climateSensorInitialized = climateSensor.beginI2C(Wire))) {
     Log.fatalln("Could not start BME280 sensor!");
   } else {
     climateSensor.setTempOverSample(1);
