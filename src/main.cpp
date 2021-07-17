@@ -13,6 +13,7 @@
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_I2CDevice.h>
 
+#include "lv_conf.h" // use our override conf...
 #include <Adafruit_LvGL_Glue.h> // Always include this BEFORE lvgl.h!
 #include <lvgl.h>
 
@@ -116,6 +117,8 @@ void setup() {
     for(;;);
   }
 
+  BuildPages();
+  lv_scr_load(Screen1);
   Log.noticeln("LvGL initialization completed.");
 
   if (!(climateSensorInitialized = climateSensor.beginI2C())) {

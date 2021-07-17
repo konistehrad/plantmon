@@ -24,6 +24,8 @@ LV_IMG_DECLARE(img547112343);   // assets\thermometer_icon-icons.com_65086-SM.pn
 LV_IMG_DECLARE(img133344875);   // assets\waterdrop_102608-SM.png
 LV_IMG_DECLARE(img_fan_icon_137646_png);   // assets\fan_icon_137646.png
 
+void BuildPages(void);
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif

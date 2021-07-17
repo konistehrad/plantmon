@@ -185,7 +185,7 @@ void BuildPages(void)
     lv_obj_set_style_local_text_color(TempValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT,
                                       lv_color_hex(255 * 256 * 256 + 255 * 256 + 255));
     lv_obj_set_style_local_text_opa(TempValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, 255);
-    lv_obj_set_style_local_text_font(TempValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, LV_font_montserrat_48);
+    lv_obj_set_style_local_text_font(TempValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, &lv_font_montserrat_48);
 
     lv_obj_align(TempValue, RootPanel, LV_ALIGN_IN_TOP_LEFT, 81, 9); // force: 112
 
@@ -226,7 +226,7 @@ void BuildPages(void)
     lv_obj_set_style_local_text_color(HumidityValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT,
                                       lv_color_hex(255 * 256 * 256 + 255 * 256 + 255));
     lv_obj_set_style_local_text_opa(HumidityValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, 255);
-    lv_obj_set_style_local_text_font(HumidityValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, LV_font_montserrat_48);
+    lv_obj_set_style_local_text_font(HumidityValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, &lv_font_montserrat_48);
 
     lv_obj_align(HumidityValue, RootPanel, LV_ALIGN_IN_TOP_LEFT, 83, 85); // force: 100
 
@@ -267,7 +267,7 @@ void BuildPages(void)
     lv_obj_set_style_local_text_color(FanValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT,
                                       lv_color_hex(255 * 256 * 256 + 255 * 256 + 255));
     lv_obj_set_style_local_text_opa(FanValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, 255);
-    lv_obj_set_style_local_text_font(FanValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, LV_font_montserrat_48);
+    lv_obj_set_style_local_text_font(FanValue, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, &lv_font_montserrat_48);
 
     lv_obj_align(FanValue, RootPanel, LV_ALIGN_IN_TOP_LEFT, 83, 160); // force: 72
 
