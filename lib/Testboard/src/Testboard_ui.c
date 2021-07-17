@@ -14,9 +14,9 @@ lv_obj_t * FanValue;
 lv_obj_t * FanLabel;
 
 ///////////////////// IMAGES ////////////////////
-LV_IMG_DECLARE(img547112343);   // assets\thermometer_icon-icons.com_65086-SM.png
-LV_IMG_DECLARE(img133344875);   // assets\waterdrop_102608-SM.png
-LV_IMG_DECLARE(img_fan_icon_137646_png);   // assets\fan_icon_137646.png
+LV_IMG_DECLARE(fanicon);
+LV_IMG_DECLARE(humidicon);
+LV_IMG_DECLARE(thermicon);
 
 ///////////////////// FUNCTIONS ////////////////////
 #define BAR_PROPERTY_VALUE 0
@@ -164,7 +164,9 @@ void BuildPages(void)
     lv_obj_set_style_local_pad_inner(RootPanel, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, 10);
 
     TempIcon = lv_img_create(RootPanel, NULL);
-    lv_img_set_src(TempIcon, &img547112343);
+    lv_img_set_src(TempIcon, &thermicon);
+    lv_obj_set_style_local_image_recolor(TempIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+    lv_obj_set_style_local_image_recolor_opa(TempIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_OPA_COVER);
     lv_obj_set_click(TempIcon, false);
     lv_obj_set_hidden(TempIcon, false);
     lv_obj_set_size(TempIcon, 64, 64);
@@ -205,7 +207,10 @@ void BuildPages(void)
     lv_obj_align(TempLabel, RootPanel, LV_ALIGN_IN_TOP_LEFT, 85, 59); // force: 95
 
     HumidityIcon = lv_img_create(RootPanel, NULL);
-    lv_img_set_src(HumidityIcon, &img133344875);
+    lv_img_set_src(HumidityIcon, &humidicon);
+    lv_obj_set_style_local_image_recolor(HumidityIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+    lv_obj_set_style_local_image_recolor_opa(HumidityIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_OPA_COVER);
+
     lv_obj_set_click(HumidityIcon, false);
     lv_obj_set_hidden(HumidityIcon, false);
     lv_obj_set_size(HumidityIcon, 64, 64);
@@ -246,7 +251,10 @@ void BuildPages(void)
     lv_obj_align(HumidityLabel, RootPanel, LV_ALIGN_IN_TOP_LEFT, 85, 136); // force: 68
 
     FanIcon = lv_img_create(RootPanel, NULL);
-    lv_img_set_src(FanIcon, &img_fan_icon_137646_png);
+    lv_img_set_src(FanIcon, &fanicon);
+    lv_obj_set_style_local_image_recolor(FanIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+    lv_obj_set_style_local_image_recolor_opa(FanIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_OPA_COVER);
+
     lv_obj_set_click(FanIcon, false);
     lv_obj_set_hidden(FanIcon, false);
     lv_obj_set_size(FanIcon, 64, 64);
