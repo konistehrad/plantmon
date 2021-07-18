@@ -52,7 +52,6 @@
 #define TIMER3_OUT1 11
 #define TIMER4_OUT0 A4
 #define TIMER4_OUT1 A5
-#define TIMER5_OUT0 5
 #define TIMER5_OUT1 6
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(&LCD_SPI, LCD_DC, LCD_SS_PIN, LCD_RESET);
@@ -76,14 +75,10 @@ static void sensorTick()
   
   int iTemp = int(climateMeasurements.temperature);
   int iHumidity = int(climateMeasurements.humidity);
-  // String str = String::format("Temperature: %d F; Humidity: %d", iTemp, iHumidity);
   String tempString = String::format("%d°F", iTemp);
   lv_label_set_text(TempValue, tempString.c_str());
   String humidString = String(iHumidity) + String('%');
   lv_label_set_text(HumidityValue, humidString.c_str());
-  // Log.infoln(str.c_str());
-  // lv_label_set_text(label, str.c_str());
-  // lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, 0);
 }
 
 void setup() {
