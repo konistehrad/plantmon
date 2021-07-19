@@ -1,19 +1,13 @@
 
-#include <Arduino.h>
-#include <Wire.h>
-#include <SPI.h>
+#include "board.h"
+#include <Seeed_Arduino_FreeRTOS.h>
 
-#include <Thread.h>
-#include <StaticThreadController.h>
 #include <ArduinoLog.h>
 
 #include <Adafruit_ZeroTimer.h>
-
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_I2CDevice.h>
-
-#include "lv_conf.h" // use our override conf...
 #include <Adafruit_LvGL_Glue.h> // Always include this BEFORE lvgl.h!
 #include <lvgl.h>
 
@@ -21,38 +15,7 @@
 
 #include "Testboard_ui.h"
 
-// Needed for LCD library
-#ifndef LCD_SPI
-  #define LCD_SPI SPI3
-  #define LCD_MISO_PIN PIN_SPI3_MISO
-  #define LCD_MOSI_PIN PIN_SPI3_MOSI
-  #define LCD_SCK_PIN PIN_SPI3_SCK
-  #define LCD_SS_PIN PIN_SPI3_SS
-  #define LCD_DC (70ul)
-  #define LCD_RESET (71Ul)
-  #define LCD_BACKLIGHT (72Ul)
-  #define LCD_XL (73ul)
-  #define LCD_YU (74ul)
-  #define LCD_XR (75ul)
-  #define LCD_YD (76ul)
-#endif
-
-
-//#define HASSPI 1
-//#define SPICOM   LCD_SPI
-//#define TFT_CS   LCD_SS_PIN
-//#define TFT_DC   LCD_DC
-//#define TFT_RST  LCD_RESET  //Set TFT_RST to -1 if the display RESET is connected to RST or 3.3V
-//#define TFT_BL   LCD_BACKLIGHT
-//#define TFT_BACKLIGHT_ON HIGH
-//#define TFT_BACKLINGT_V 2000
-
-// SAMD51 timer layouts for ZeroTimer
-#define TIMER3_OUT0 10
-#define TIMER3_OUT1 11
-#define TIMER4_OUT0 A4
-#define TIMER4_OUT1 A5
-#define TIMER5_OUT1 6
+const UBaseType_t tskPRIORITY_NORMAL = tskIDLE_PRIORITY + 4;
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(&LCD_SPI, LCD_DC, LCD_SS_PIN, LCD_RESET);
 Adafruit_LvGL_Glue glue;
@@ -60,26 +23,56 @@ Adafruit_LvGL_Glue glue;
 #define CELSIUS_SCALE 0 //Default
 #define FAHRENHEIT_SCALE 1
 BME280 climateSensor;
-BME280_SensorMeasurements climateMeasurements;
 bool climateSensorInitialized = false;
 
-static void lvTick()
+QueueHandle_t Handle_climateQueue;
+TaskHandle_t Handle_lvglTask;
+TaskHandle_t Handle_sensorTask;
+
+static void lvTick(void * pvParameters)
 {
-  lv_task_handler();
+  static BME280_SensorMeasurements climateMeasurements;
+  Log.infoln("LvGL task starting...");
+  for(;;) {
+    if(xQueueReceive(Handle_climateQueue, &climateMeasurements, 0)) {
+      int iTemp = int(climateMeasurements.temperature);
+      int iHumidity = int(climateMeasurements.humidity);
+      String tempString = String::format("%d°F", iTemp);
+      String humidString = String(iHumidity) + String('%');
+      
+      lv_label_set_text(TempValue, tempString.c_str());
+      lv_label_set_text(HumidityValue, humidString.c_str());
+    }
+
+    lv_task_handler();
+    delay(5);
+  }
+  Log.errorln("LvGL task completed? This shouldn't happen!");
 }
 
-static void sensorTick()
-{
-  if(!climateSensorInitialized || climateSensor.isMeasuring()) return;
-  climateSensor.readAllMeasurements(&climateMeasurements, FAHRENHEIT_SCALE); // Return temperature in Celsius
-  
-  int iTemp = int(climateMeasurements.temperature);
-  int iHumidity = int(climateMeasurements.humidity);
-  String tempString = String::format("%d°F", iTemp);
-  lv_label_set_text(TempValue, tempString.c_str());
-  String humidString = String(iHumidity) + String('%');
-  lv_label_set_text(HumidityValue, humidString.c_str());
+static void sensorTick(void * pvParameters)
+{ 
+  static BME280_SensorMeasurements climateMeasurements;
+  Log.infoln("Sensor task starting...");
+  for(;;) {
+    while(climateSensor.isMeasuring()) taskYIELD();
+    climateSensor.readAllMeasurements(&climateMeasurements, FAHRENHEIT_SCALE); // Return temperature in Celsius
+    xQueueOverwrite(Handle_climateQueue, &climateMeasurements);
+
+    delay(50);
+  }
+  Log.errorln("Sensor task completed? This shouldn't happen!");
 }
+
+#if defined(LV_USE_LOG) && LV_USE_LOG != 0
+void my_log_cb(lv_log_level_t level, const char * file, uint32_t line, const char * fn_name, const char * dsc)
+{
+  if(level == LV_LOG_LEVEL_ERROR) Log.error(dsc);
+  if(level == LV_LOG_LEVEL_WARN)  Log.warningln(dsc);
+  if(level == LV_LOG_LEVEL_INFO)  Log.infoln(dsc);
+  if(level == LV_LOG_LEVEL_TRACE) Log.traceln(dsc);
+}
+#endif
 
 void setup() {
   Serial.begin(115200);
@@ -106,6 +99,9 @@ void setup() {
   Log.noticeln("TFT initialization completed.");
   
   // Initialize glue, passing in address of display
+#if defined(LV_USE_LOG) && LV_USE_LOG != 0
+  lv_log_register_print_cb(my_log_cb);
+#endif
   LvGLStatus status = glue.begin(&tft);
   if(status != LVGL_OK) {
     Log.fatalln("LvGL initialization failed: %d", (int)status);
@@ -114,24 +110,31 @@ void setup() {
 
   BuildPages();
   lv_scr_load(Screen1);
+  xTaskCreate(lvTick, "lvgl task", 1024, NULL, tskPRIORITY_NORMAL, &Handle_lvglTask);
   Log.noticeln("LvGL initialization completed.");
 
   Wire.begin();
   Wire.setClock(1000000ul);
   if (!(climateSensorInitialized = climateSensor.beginI2C(Wire))) {
-    Log.fatalln("Could not start BME280 sensor!");
+    Log.errorln("Could not start BME280 sensor!");
   } else {
     climateSensor.setTempOverSample(1);
     climateSensor.setHumidityOverSample(1);
     climateSensor.setPressureOverSample(0);
+    xTaskCreate(sensorTick, "sensor task", 256, NULL, tskPRIORITY_NORMAL, &Handle_sensorTask);
     Log.noticeln("BME280 initialization completed.");
   }
+
+  Handle_climateQueue = xQueueCreate(1, sizeof(BME280_SensorMeasurements));
+  Log.infoln("Tasks and queue created; starting scheduler!");
+  // never returns!
+  vTaskStartScheduler();
+  Log.fatalln("Scheduler failed to start; you shouldn't be here!");
+  while(1){};
 }
 
-Thread lvglThread(lvTick, 5);
-Thread sensorThread(sensorTick, 50);
-StaticThreadController<2> threads(&lvglThread, &sensorThread);
+// this is where you would pump coroutines, if you had 'em
+void vApplicationIdleHook(void){}
 
-void loop() {
-  threads.run();
-}
+// must be exported, but unusued
+void loop() {}
