@@ -9,6 +9,7 @@
         "*.tcc": "cpp",
         "algorithm": "cpp",
         "spi.h": "c",
-        "spi_reg.h": "c"
+        "spi_reg.h": "c",
+        "tft_espi_esp32.c": "cpp"
     }
 }

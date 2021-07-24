@@ -178,7 +178,7 @@ void BuildPages(void)
     TempValue = lv_label_create(RootPanel, NULL);
     lv_label_set_long_mode(TempValue, LV_LABEL_LONG_EXPAND);
     lv_label_set_align(TempValue, LV_LABEL_ALIGN_LEFT);
-    lv_label_set_text(TempValue, "64°F");
+    lv_label_set_text(TempValue, "--°F");
     lv_obj_set_size(TempValue, 112, 52);  // force: 81
     lv_obj_set_click(TempValue, false);
     lv_obj_set_hidden(TempValue, false);
@@ -222,7 +222,7 @@ void BuildPages(void)
     HumidityValue = lv_label_create(RootPanel, NULL);
     lv_label_set_long_mode(HumidityValue, LV_LABEL_LONG_EXPAND);
     lv_label_set_align(HumidityValue, LV_LABEL_ALIGN_LEFT);
-    lv_label_set_text(HumidityValue, "50%");
+    lv_label_set_text(HumidityValue, "--%");
     lv_obj_set_size(HumidityValue, 100, 52);  // force: 83
     lv_obj_set_click(HumidityValue, false);
     lv_obj_set_hidden(HumidityValue, false);
