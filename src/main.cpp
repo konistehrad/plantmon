@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <esp32-hal.h>
 #include <Ticker.h>
@@ -10,17 +9,22 @@
 #include <lvgl.h>
 #include <SparkFunBME280.h>
 #include "Testboard_ui.h"
+#include "Model.hpp"
+
+#define M5_NEO_NUM 10
+#define M5_NEO_PIN 15
+
 #ifdef USE_HOMESPAN
   #include <HomeSpan.h>
+  #include "hs.hpp"
+  TaskHandle_t homespanTaskHandle;
 #endif
 
 #define CELSIUS_SCALE 0 //Default
 #define FAHRENHEIT_SCALE 1
 BME280 climateSensor;
 bool climateSensorInitialized = false;
-
-static BME280_SensorMeasurements climateMeasurements;
-bool climateMeasurementsDirty;
+Model<BME280_SensorMeasurements> lvglClimateModel;
 
 Ticker tick;
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
@@ -31,15 +35,14 @@ TaskHandle_t climateSensorTaskHandle = NULL;
 TaskHandle_t lvglTaskHandle = NULL;
 
 static void lvglTask(void* arg) {
+  static BME280_SensorMeasurements climateMeasurements;
   for(;;) {
-    if(climateMeasurementsDirty) {
-      String tempString = String((int)climateMeasurements.temperature) + String("°F");
+    if(lvglClimateModel.get(&climateMeasurements)) {
+      String tempString = String((int)(climateMeasurements.temperature * 1.8f + 32)) + String("°F");
       String humidString = String((int)climateMeasurements.humidity) + String('%');
       
       lv_label_set_text(TempValue, tempString.c_str());
       lv_label_set_text(HumidityValue, humidString.c_str());
-
-      climateMeasurementsDirty = false;
     }
 
     lv_task_handler();
@@ -49,10 +52,14 @@ static void lvglTask(void* arg) {
 
 static void climateSensorTask(void* arg)
 {
+  static BME280_SensorMeasurements climateMeasurements;
   for(;;) {
     while(climateSensor.isMeasuring()) delay(10);
-    climateSensor.readAllMeasurements(&climateMeasurements, FAHRENHEIT_SCALE);
-    climateMeasurementsDirty = true;
+    climateSensor.readAllMeasurements(&climateMeasurements, CELSIUS_SCALE);
+    lvglClimateModel.set(climateMeasurements);
+#ifdef USE_HOMESPAN
+    homespanClimateModel.set(climateMeasurements);
+#endif    
     delay(500);
   }
 }
@@ -87,23 +94,23 @@ void setup() {
   
   // wait until serial attaches or 4s passes...
   while(!Serial && !Serial.available() && millis() < 2000);
-  Log.begin(LOG_LEVEL_VERBOSE, &Serial);
+  //Log.begin(LOG_LEVEL_VERBOSE, &Serial);
   
   pinMode(TFT_BL, OUTPUT);
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
-  Log.noticeln("GPIO initialization completed.");
+  //Log.noticeln("GPIO initialization completed.");
   
   Wire.begin();
   Wire.setClock(1000000ul);
   if (!(climateSensorInitialized = climateSensor.beginI2C(Wire))) {
-    Log.errorln("Could not start BME280 sensor!");
+    //Log.errorln("Could not start BME280 sensor!");
   } else {
     climateSensor.setTempOverSample(1);
     climateSensor.setHumidityOverSample(1);
     climateSensor.setPressureOverSample(0);
-    Log.noticeln("BME280 initialization completed.");
+    //Log.noticeln("BME280 initialization completed.");
   }
 
   // LVGL INITIALIZATION ROUTINES HERE!
@@ -115,7 +122,7 @@ void setup() {
   tft.init(); /* TFT init */
   tft.setRotation(TFT_ROTATION); /* Landscape orientation */
   tft.invertDisplay(TFT_INVERTED);
-  Log.noticeln("TFT initialized.");
+  //Log.noticeln("TFT initialized.");
   
   lv_disp_buf_init(&disp_buf, buf, NULL, LV_HOR_RES_MAX * 10);
 
@@ -131,15 +138,22 @@ void setup() {
   BuildPages();
   lv_scr_load(Screen1);
   digitalWrite(TFT_BL, TFT_BL_ON);
-  Log.noticeln("LVGL initialized.");
-  
+  //Log.noticeln("LVGL initialized.");
+
+  lvglClimateModel.init();
+
+#ifdef USE_HOMESPAN
+  homespanInit();
+#endif
+
   if(climateSensorInitialized) {
-    xTaskCreateUniversal(climateSensorTask, "climate task", 8192, NULL, 1, &climateSensorTaskHandle, ARDUINO_RUNNING_CORE);
+    xTaskCreateUniversal(climateSensorTask, "climate task", 8192, NULL, 1, &climateSensorTaskHandle, CONFIG_ARDUINO_RUNNING_CORE);
   }
-  xTaskCreateUniversal(lvglTask, "lvgl task", 8192, NULL, 1, &lvglTaskHandle, ARDUINO_RUNNING_CORE);
+  xTaskCreateUniversal(lvglTask, "lvgl task", 8192, NULL, 1, &lvglTaskHandle, CONFIG_ARDUINO_RUNNING_CORE);
 }
 
-// must be exported, but unusued?
 void loop() {
-  delay(1000);
+#ifdef USE_HOMESPAN
+  homespanLoop();
+#endif
 }
