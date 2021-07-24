@@ -1,11 +1,11 @@
 
 #include <Arduino.h>
+#include <esp32-hal.h>
 #include <Ticker.h>
 #include <Wire.h>
 #include <SPI.h>
 
 #include <ArduinoLog.h>
-#include <Thread.h>
 #include <TFT_eSPI.h>
 #include <lvgl.h>
 #include <SparkFunBME280.h>
@@ -21,40 +21,39 @@ bool climateSensorInitialized = false;
 
 static BME280_SensorMeasurements climateMeasurements;
 bool climateMeasurementsDirty;
-Thread sensorThread = Thread();
-Thread lvglThread = Thread();
 
 Ticker tick;
 TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
 
-static void lvTick()
-{
-  if(climateMeasurementsDirty) {
-    String tempString = String((int)climateMeasurements.temperature) + String("°F");
-    String humidString = String((int)climateMeasurements.humidity) + String('%');
-    
-    lv_label_set_text(TempValue, tempString.c_str());
-    lv_label_set_text(HumidityValue, humidString.c_str());
+TaskHandle_t climateSensorTaskHandle = NULL;
+TaskHandle_t lvglTaskHandle = NULL;
 
-    climateMeasurementsDirty = false;
+static void lvglTask(void* arg) {
+  for(;;) {
+    if(climateMeasurementsDirty) {
+      String tempString = String((int)climateMeasurements.temperature) + String("°F");
+      String humidString = String((int)climateMeasurements.humidity) + String('%');
+      
+      lv_label_set_text(TempValue, tempString.c_str());
+      lv_label_set_text(HumidityValue, humidString.c_str());
+
+      climateMeasurementsDirty = false;
+    }
+
+    lv_task_handler();
+    delay(5);
   }
-
-  lv_task_handler();
 }
 
-static void sensorTick()
+static void climateSensorTask(void* arg)
 {
-  if(climateSensor.isMeasuring())
-  {
-    sensorThread.setInterval(10);
-  }
-  else
-  {
+  for(;;) {
+    while(climateSensor.isMeasuring()) delay(10);
     climateSensor.readAllMeasurements(&climateMeasurements, FAHRENHEIT_SCALE);
     climateMeasurementsDirty = true;
-    sensorThread.setInterval(500);
+    delay(500);
   }
 }
 
@@ -134,17 +133,13 @@ void setup() {
   digitalWrite(TFT_BL, TFT_BL_ON);
   Log.noticeln("LVGL initialized.");
   
-  sensorThread.onRun(sensorTick);
-  sensorThread.setInterval(500);
-
-  lvglThread.onRun(lvTick);
-  lvglThread.setInterval(5);
+  if(climateSensorInitialized) {
+    xTaskCreateUniversal(climateSensorTask, "climate task", 8192, NULL, 1, &climateSensorTaskHandle, ARDUINO_RUNNING_CORE);
+  }
+  xTaskCreateUniversal(lvglTask, "lvgl task", 8192, NULL, 1, &lvglTaskHandle, ARDUINO_RUNNING_CORE);
 }
 
 // must be exported, but unusued?
 void loop() {
-  if(climateSensorInitialized) {
-    if(sensorThread.shouldRun()) sensorThread.run();
-  }
-  if(lvglThread.shouldRun()) lvglThread.run();
+  delay(1000);
 }
