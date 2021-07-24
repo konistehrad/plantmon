@@ -2,6 +2,13 @@
     "python.pythonPath": "/bin/python3",
     "files.associations": {
         "freertos.h": "c",
-        "freertosconfig.h": "c"
+        "freertosconfig.h": "c",
+        "vector": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "*.tcc": "cpp",
+        "algorithm": "cpp",
+        "spi.h": "c",
+        "spi_reg.h": "c"
     }
 }

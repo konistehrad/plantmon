@@ -1,7 +1,9 @@
 
+#include <Arduino.h>
+#include <ArduinoLog.h>
+#include <Thread.h>
 #include "board.h"
 
-#include <ArduinoLog.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_I2CDevice.h>
@@ -11,11 +13,7 @@
 #include <SparkFunBME280.h>
 
 #include "Testboard_ui.h"
-#include "Model.hpp"
 
-const UBaseType_t tskPRIORITY_NORMAL = tskIDLE_PRIORITY + 1;
-
-Adafruit_ILI9341 tft = Adafruit_ILI9341(&LCD_SPI, LCD_DC, LCD_SS_PIN, LCD_RESET);
 Adafruit_LvGL_Glue glue;
 
 #define CELSIUS_SCALE 0 //Default
@@ -23,40 +21,39 @@ Adafruit_LvGL_Glue glue;
 BME280 climateSensor;
 bool climateSensorInitialized = false;
 
-static Model<BME280_SensorMeasurements> bme280Model;
-TaskHandle_t Handle_lvglTask;
-TaskHandle_t Handle_sensorTask;
+static BME280_SensorMeasurements climateMeasurements;
+bool climateMeasurementsDirty;
+Thread sensorThread = Thread();
+Thread lvglThread = Thread();
 
-static void lvTick(void * pvParameters)
+static void lvTick()
 {
-  static BME280_SensorMeasurements climateMeasurements;
-  Log.infoln("LvGL task starting...");
-  for(;;) {
-    if(bme280Model.get(&climateMeasurements)) {
-      String tempString = String((int)climateMeasurements.temperature) + String("°F");
-      String humidString = String((int)climateMeasurements.humidity) + String('%');
-      
-      lv_label_set_text(TempValue, tempString.c_str());
-      lv_label_set_text(HumidityValue, humidString.c_str());
-    }
+  if(climateMeasurementsDirty) {
+    String tempString = String((int)climateMeasurements.temperature) + String("°F");
+    String humidString = String((int)climateMeasurements.humidity) + String('%');
+    
+    lv_label_set_text(TempValue, tempString.c_str());
+    lv_label_set_text(HumidityValue, humidString.c_str());
 
-    lv_task_handler();
-    delay(5);
+    climateMeasurementsDirty = false;
   }
-  Log.errorln("LvGL task completed? This shouldn't happen!");
+
+  lv_task_handler();
 }
 
-static void sensorTick(void * pvParameters)
-{ 
-  static BME280_SensorMeasurements climateMeasurements;
-  Log.infoln("Sensor task starting...");
-  for(;;) {
-    while(climateSensor.isMeasuring()) delay(10);
-    climateSensor.readAllMeasurements(&climateMeasurements, FAHRENHEIT_SCALE); // Return temperature in Celsius
-    bme280Model.set(climateMeasurements);
-    delay(50);
+static void sensorTick()
+{
+  //Log.infoln("Sensor task starting...");
+  if(climateSensor.isMeasuring())
+  {
+    sensorThread.setInterval(10);
   }
-  Log.errorln("Sensor task completed? This shouldn't happen!");
+  else
+  {
+    climateSensor.readAllMeasurements(&climateMeasurements, FAHRENHEIT_SCALE);
+    climateMeasurementsDirty = true;
+    sensorThread.setInterval(500);
+  }
 }
 
 #if defined(LV_USE_LOG) && LV_USE_LOG != 0
@@ -73,27 +70,37 @@ void setup() {
   Serial.begin(115200);
   
   // wait until serial attaches or 4s passes...
-  while(!Serial && !Serial.available() && millis() < 4000);
+  while(!Serial && !Serial.available() && millis() < 2000);
   Log.begin(LOG_LEVEL_VERBOSE, &Serial);
 
+  beginBoard();
+  
   pinMode(LCD_BACKLIGHT, OUTPUT);
-#ifdef IS_WIOTERMINAL
-  pinMode(WIO_KEY_A, INPUT_PULLUP);
-  pinMode(WIO_KEY_B, INPUT_PULLUP);
-  pinMode(WIO_KEY_C, INPUT_PULLUP);
-  pinMode(WIO_5S_UP, INPUT_PULLUP);
-  pinMode(WIO_5S_DOWN, INPUT_PULLUP);
-  pinMode(WIO_5S_LEFT, INPUT_PULLUP);
-  pinMode(WIO_5S_RIGHT, INPUT_PULLUP);
-  pinMode(WIO_5S_PRESS, INPUT_PULLUP);
-#endif
+  pinMode(BUTTON_A, INPUT_PULLUP);
+  pinMode(BUTTON_B, INPUT_PULLUP);
+  pinMode(BUTTON_C, INPUT_PULLUP);
   Log.noticeln("GPIO initialization completed.");
 
-  tft.begin();
-  tft.setRotation(3);
+  tft.begin(LCD_BUSSPEED);
+  tft.setRotation(LCD_ROTATION);
+  tft.invertDisplay(LCD_INVERTED);
+#ifdef MADCTL_ML
+  tft.sendCommand(0x36, TFTCOMMAND, 1);
+#endif
   digitalWrite(LCD_BACKLIGHT, LCD_BACKLIGHT_ON);
   Log.noticeln("TFT initialization completed.");
   
+  Wire.begin();
+  Wire.setClock(1000000ul);
+  if (!(climateSensorInitialized = climateSensor.beginI2C(Wire))) {
+    Log.errorln("Could not start BME280 sensor!");
+  } else {
+    climateSensor.setTempOverSample(1);
+    climateSensor.setHumidityOverSample(1);
+    climateSensor.setPressureOverSample(0);
+    Log.noticeln("BME280 initialization completed.");
+  }
+
   // Initialize glue, passing in address of display
 #if defined(LV_USE_LOG) && LV_USE_LOG != 0
   lv_log_register_print_cb(my_log_cb);
@@ -106,28 +113,18 @@ void setup() {
 
   BuildPages();
   lv_scr_load(Screen1);
-  xTaskCreate(lvTick, "lvgl task", 1024, NULL, tskPRIORITY_NORMAL, &Handle_lvglTask);
-  Log.noticeln("LvGL initialization completed.");
+  
+  sensorThread.onRun(sensorTick);
+  sensorThread.setInterval(500);
 
-  if(!bme280Model.init()) {
-    Log.fatalln("Could not construct shared data model!");
-    for(;;);
-  }
-
-  Wire.begin();
-  Wire.setClock(1000000ul);
-  if (!(climateSensorInitialized = climateSensor.beginI2C(Wire))) {
-    Log.errorln("Could not start BME280 sensor!");
-  } else {
-    climateSensor.setTempOverSample(1);
-    climateSensor.setHumidityOverSample(1);
-    climateSensor.setPressureOverSample(0);
-    xTaskCreate(sensorTick, "sensor task", 256, NULL, tskPRIORITY_NORMAL, &Handle_sensorTask);
-    Log.noticeln("BME280 initialization completed.");
-  }
-
-  Log.infoln("Tasks and queue created; hopefully eRPC set up the scheduler right!");
+  lvglThread.onRun(lvTick);
+  lvglThread.setInterval(5);
 }
 
 // must be exported, but unusued?
-void loop() {}
+void loop() {
+  if(climateSensorInitialized) {
+    if(sensorThread.shouldRun()) sensorThread.run();
+  }
+  if(lvglThread.shouldRun()) lvglThread.run();
+}
