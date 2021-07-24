@@ -4,10 +4,12 @@
 #include <Wire.h>
 #include <SPI.h>
 
+#include <Thread.h>
 #include <ArduinoLog.h>
 #include <TFT_eSPI.h>
 #include <lvgl.h>
 #include <SparkFunBME280.h>
+#include "IP5306.h"
 #include "Testboard_ui.h"
 #include "Model.hpp"
 
@@ -20,6 +22,7 @@
   TaskHandle_t homespanTaskHandle;
 #endif
 
+
 #define CELSIUS_SCALE 0 //Default
 #define FAHRENHEIT_SCALE 1
 BME280 climateSensor;
@@ -31,37 +34,75 @@ TFT_eSPI tft = TFT_eSPI(); /* TFT instance */
 static lv_disp_buf_t disp_buf;
 static lv_color_t buf[LV_HOR_RES_MAX * 10];
 
-TaskHandle_t climateSensorTaskHandle = NULL;
-TaskHandle_t lvglTaskHandle = NULL;
+Thread lvglThread = Thread();
+Thread climateSensorThread = Thread();
+Thread batteryWifiCheckThread = Thread();
 
-static void lvglTask(void* arg) {
-  static BME280_SensorMeasurements climateMeasurements;
-  for(;;) {
-    if(lvglClimateModel.get(&climateMeasurements)) {
-      String tempString = String((int)(climateMeasurements.temperature * 1.8f + 32)) + String("°F");
-      String humidString = String((int)climateMeasurements.humidity) + String('%');
-      
-      lv_label_set_text(TempValue, tempString.c_str());
-      lv_label_set_text(HumidityValue, humidString.c_str());
+static void batteryWifiCheckTask() {
+  if(WiFi.status() == WL_CONNECTED) {
+    int8_t rssi = WiFi.RSSI();
+    // Serial.print("RSSI: "); Serial.println(rssi);
+    if(rssi >= -60) {
+      lv_img_set_src(WifiIcon, &wifi_connected_full);
+    } else if(rssi >= -70) {
+      lv_img_set_src(WifiIcon, &wifi_connected_66);
+    } else if(rssi >= -80) {
+      lv_img_set_src(WifiIcon, &wifi_connected_50);
+    } else if(rssi >= -90) {
+      lv_img_set_src(WifiIcon, &wifi_connected_33);
+    } else {
+      lv_img_set_src(WifiIcon, &wifi_connected_0);
     }
-
-    lv_task_handler();
-    delay(5);
+  } else {
+    lv_img_set_src(WifiIcon, &wifi_disconnected);
+  }
+  
+  if(IP5306_GetPowerSource() == 1) {
+    if(IP5306_GetBatteryFull()) {
+      lv_img_set_src(BatteryIcon, &battery_discharging_full);
+    } else {
+      lv_img_set_src(BatteryIcon, &battery_charging);
+    }
+  } else {
+    uint8_t pct = IP5306_LEDS2PCT(IP5306_GetLevelLeds());
+    if(pct >= 75) {
+      lv_img_set_src(BatteryIcon, &battery_discharging_full);
+    } else if(pct >= 50) {
+      lv_img_set_src(BatteryIcon, &battery_discharging_66);
+    } else if(pct >= 33) {
+      lv_img_set_src(BatteryIcon, &battery_discharging_33);
+    } else {
+      lv_img_set_src(BatteryIcon, &battery_discharging_0);
+    }
   }
 }
 
-static void climateSensorTask(void* arg)
+static void lvglTask() {
+  static BME280_SensorMeasurements climateMeasurements;
+  if(lvglClimateModel.get(&climateMeasurements)) {
+    String tempString = String((int)(climateMeasurements.temperature * 1.8f + 32)) + String("°F");
+    String humidString = String((int)climateMeasurements.humidity) + String('%');
+    
+    lv_label_set_text(TempValue, tempString.c_str());
+    lv_label_set_text(HumidityValue, humidString.c_str());
+  }
+
+  lv_task_handler();
+}
+
+static void climateSensorTask()
 {
   static BME280_SensorMeasurements climateMeasurements;
-  for(;;) {
-    while(climateSensor.isMeasuring()) delay(10);
-    climateSensor.readAllMeasurements(&climateMeasurements, CELSIUS_SCALE);
-    lvglClimateModel.set(climateMeasurements);
-#ifdef USE_HOMESPAN
-    homespanClimateModel.set(climateMeasurements);
-#endif    
-    delay(500);
+  if(climateSensor.isMeasuring()) {
+    climateSensorThread.setInterval(10);
+    return;
   }
+  climateSensor.readAllMeasurements(&climateMeasurements, CELSIUS_SCALE);
+  lvglClimateModel.set(climateMeasurements);
+#ifdef USE_HOMESPAN
+  homespanClimateModel.set(climateMeasurements);
+#endif    
+  climateSensorThread.setInterval(1000);
 }
 
 #if defined(LV_USE_LOG) && LV_USE_LOG != 0
@@ -96,6 +137,9 @@ void setup() {
   while(!Serial && !Serial.available() && millis() < 2000);
   //Log.begin(LOG_LEVEL_VERBOSE, &Serial);
   
+  // if use M5GO button, need set gpio15 OD or PP mode to avoid affecting the wifi signal  
+  // grrrrr
+  pinMode(15, OUTPUT_OPEN_DRAIN);
   pinMode(TFT_BL, OUTPUT);
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
@@ -103,7 +147,6 @@ void setup() {
   //Log.noticeln("GPIO initialization completed.");
   
   Wire.begin();
-  Wire.setClock(1000000ul);
   if (!(climateSensorInitialized = climateSensor.beginI2C(Wire))) {
     //Log.errorln("Could not start BME280 sensor!");
   } else {
@@ -146,13 +189,20 @@ void setup() {
   homespanInit();
 #endif
 
-  if(climateSensorInitialized) {
-    xTaskCreateUniversal(climateSensorTask, "climate task", 8192, NULL, 1, &climateSensorTaskHandle, CONFIG_ARDUINO_RUNNING_CORE);
-  }
-  xTaskCreateUniversal(lvglTask, "lvgl task", 8192, NULL, 1, &lvglTaskHandle, CONFIG_ARDUINO_RUNNING_CORE);
+  lvglThread.onRun(lvglTask);
+  lvglThread.setInterval(5);
+
+  climateSensorThread.onRun(climateSensorTask);
+  climateSensorThread.setInterval(0); // interval is set within the task
+
+  batteryWifiCheckThread.onRun(batteryWifiCheckTask);
+  batteryWifiCheckThread.setInterval(3000);
 }
 
 void loop() {
+  if(climateSensorThread.shouldRun()) climateSensorThread.run();
+  if(lvglThread.shouldRun()) lvglThread.run();
+  if(batteryWifiCheckThread.shouldRun()) batteryWifiCheckThread.run();
 #ifdef USE_HOMESPAN
   homespanLoop();
 #endif
