@@ -10,6 +10,15 @@
         "algorithm": "cpp",
         "spi.h": "c",
         "spi_reg.h": "c",
-        "tft_espi_esp32.c": "cpp"
+        "tft_espi_esp32.c": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "array": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "new": "cpp",
+        "lvgl.h": "c"
     }
 }
