@@ -7,16 +7,21 @@
 #include <lvgl.h>
 #include <SparkFunBME280.h>
 #include <TFT_eSPI.h>
+#include "status.h"
 #include "BucketThread.hpp"
 #include "Model.hpp"
 #include "Testboard_ui.h"
 
 const uint8_t BLK_PWM_CHANNEL = 7;
 
-class ViewThread : public BucketThread {
+class ViewThread : 
+  public BucketThread,
+  public Subscriber<BME280_SensorMeasurements>,
+  public Subscriber<SystemData>
+{
 public:
   bool init() override {
-    if(!m_SensorModel.init()) return false;
+    if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
     setInterval(5);
     
     // Init the back-light LED PWM
@@ -51,7 +56,7 @@ public:
   
   void run() {
     if(millis() < 500) return;
-    updateSensorModelIfNeeded();
+    checkSubs();
     lv_task_handler();
     runned();
   }
@@ -59,23 +64,58 @@ public:
   void brightness(uint8_t b) { ledcWrite(BLK_PWM_CHANNEL, m_Brightness = b); }
   uint8_t brightness() { return m_Brightness; }
 
-  Model<BME280_SensorMeasurements>* sensorModel() { return &m_SensorModel; }
 protected:
   lv_disp_buf_t disp_buf;
   lv_color_t buf[LV_HOR_RES_MAX * 10];
   Ticker m_Ticker;
   TFT_eSPI tft;
-  BME280_SensorMeasurements m_Measurements;
-  Model<BME280_SensorMeasurements> m_SensorModel;
   int m_Brightness;
 
-  void updateSensorModelIfNeeded() {
-    if(m_SensorModel.get(&m_Measurements)) {
-      String tempString = String((int)(m_Measurements.temperature * 1.8f + 32)) + String("°F");
-      String humidString = String((int)m_Measurements.humidity) + String('%');
+  void checkSubs() {
+    SystemData systemData;
+    BME280_SensorMeasurements measurements;
+    if(Subscriber<BME280_SensorMeasurements>::get(&measurements)) {
+      String tempString = String((int)(measurements.temperature * 1.8f + 32)) + String("°F");
+      String humidString = String((int)measurements.humidity) + String('%');
       
       lv_label_set_text(TempValue, tempString.c_str());
       lv_label_set_text(HumidityValue, humidString.c_str());
+    }
+
+    if(Subscriber<SystemData>::get(&systemData)) {
+      if(systemData.powerData.powerSource == PowerData::VIN) {
+        if(systemData.powerData.batteryFull) {
+          lv_img_set_src(BatteryIcon, &battery_discharging_full);
+        } else {
+          lv_img_set_src(BatteryIcon, &battery_charging);
+        }
+      } else {
+        if(systemData.powerData.percentage >= 75) {
+          lv_img_set_src(BatteryIcon, &battery_discharging_full);
+        } else if(systemData.powerData.percentage >= 50) {
+          lv_img_set_src(BatteryIcon, &battery_discharging_66);
+        } else if(systemData.powerData.percentage >= 33) {
+          lv_img_set_src(BatteryIcon, &battery_discharging_33);
+        } else {
+          lv_img_set_src(BatteryIcon, &battery_discharging_0);
+        }
+      }
+
+      if(systemData.wifiData.connected()) {
+        if(systemData.wifiData.rssi >= -60) {
+          lv_img_set_src(WifiIcon, &wifi_connected_full);
+        } else if(systemData.wifiData.rssi >= -70) {
+          lv_img_set_src(WifiIcon, &wifi_connected_66);
+        } else if(systemData.wifiData.rssi >= -80) {
+          lv_img_set_src(WifiIcon, &wifi_connected_50);
+        } else if(systemData.wifiData.rssi >= -90) {
+          lv_img_set_src(WifiIcon, &wifi_connected_33);
+        } else {
+          lv_img_set_src(WifiIcon, &wifi_connected_0);
+        }
+      } else {
+        lv_img_set_src(WifiIcon, &wifi_disconnected);
+      }
     }
   }
 

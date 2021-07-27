@@ -45,8 +45,8 @@ void setup() {
   sensorThread.init();
   viewThread.init();
 
-  sensorThread.addModel(homeSpanThread.sensorModel());
-  sensorThread.addModel(viewThread.sensorModel());
+  sensorThread.subscribe(homeSpanThread, viewThread);
+  statusThread.subscribe(ledThread, viewThread);
 }
 
 void loop() {

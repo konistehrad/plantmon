@@ -22,7 +22,10 @@
 
 #define CHG_CC_BIT    (0x20)
 
-class StatusThread : public BucketThread {
+class StatusThread : 
+  public BucketThread,
+  public Publisher<SystemData>
+{
 public:
   bool init() override { 
     IP5306_SetVinCurrent(CURRENT_400MA);
@@ -31,54 +34,20 @@ public:
     IP5306_SetVoltagePressure(2); // Add volt 28mv
     IP5306_SetChargeCCLoop(1); // Vin charge CC
     setInterval(2000);
-    if(!m_SystemDataModel.init()) return false;
     return true; 
   }
 
   void run() {
-    m_SystemData.wifiData.connected = WiFi.status() == WL_CONNECTED;
-    if(m_SystemData.wifiData.connected) {
-      m_SystemData.wifiData.rssi = WiFi.RSSI();
-      if(m_SystemData.wifiData.rssi >= -60) {
-        lv_img_set_src(WifiIcon, &wifi_connected_full);
-      } else if(m_SystemData.wifiData.rssi >= -70) {
-        lv_img_set_src(WifiIcon, &wifi_connected_66);
-      } else if(m_SystemData.wifiData.rssi >= -80) {
-        lv_img_set_src(WifiIcon, &wifi_connected_50);
-      } else if(m_SystemData.wifiData.rssi >= -90) {
-        lv_img_set_src(WifiIcon, &wifi_connected_33);
-      } else {
-        lv_img_set_src(WifiIcon, &wifi_connected_0);
-      }
-    } else {
-      lv_img_set_src(WifiIcon, &wifi_disconnected);
-    }
+    SystemData systemData;
 
-    m_SystemData.powerData.powerSource = (PowerData::PowerSourceType)IP5306_GetPowerSource();
-    if(m_SystemData.powerData.powerSource == PowerData::VIN) {
-      m_SystemData.powerData.batteryFull = IP5306_GetBatteryFull();
-      if(m_SystemData.powerData.batteryFull) {
-        lv_img_set_src(BatteryIcon, &battery_discharging_full);
-      } else {
-        lv_img_set_src(BatteryIcon, &battery_charging);
-      }
-    } else {
-      m_SystemData.powerData.percentage = IP5306_LEDS2PCT(IP5306_GetLevelLeds());
-      if(m_SystemData.powerData.percentage >= 75) {
-        lv_img_set_src(BatteryIcon, &battery_discharging_full);
-      } else if(m_SystemData.powerData.percentage >= 50) {
-        lv_img_set_src(BatteryIcon, &battery_discharging_66);
-      } else if(m_SystemData.powerData.percentage >= 33) {
-        lv_img_set_src(BatteryIcon, &battery_discharging_33);
-      } else {
-        lv_img_set_src(BatteryIcon, &battery_discharging_0);
-      }
-    }
+    systemData.powerData.powerSource = (PowerData::PowerSourceType)IP5306_GetPowerSource();
+    systemData.powerData.batteryFull = IP5306_GetBatteryFull();
+    systemData.powerData.percentage = IP5306_LEDS2PCT(IP5306_GetLevelLeds());
+
+    systemData.wifiData.status = WiFi.status();
+    systemData.wifiData.rssi = WiFi.RSSI();
     
+    Publisher<SystemData>::publish(systemData);
     runned();
   }
-
-protected:
-  SystemData m_SystemData;
-  Model<SystemData> m_SystemDataModel;
 };

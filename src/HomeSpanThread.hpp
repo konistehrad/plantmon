@@ -6,10 +6,14 @@
 #include "BucketThread.hpp"
 #include "Model.hpp"
 
-class HomeSpanThread : public BucketThread {
+class HomeSpanThread : 
+    public BucketThread,
+    public Subscriber<BME280_SensorMeasurements>
+{
 public:
     bool init() override {
-        if(!m_SensorModel.init()) return false;
+        if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
+
         setInterval(0);
         // homeSpan.setControlPin(BUTTON_A);
         homeSpan.begin(Category::Other, "Troy");
@@ -34,17 +38,15 @@ public:
         return true;
     }
     void run() override {
-        if(m_SensorModel.get(&m_Measurements)) {
-            m_TempSensorCurrentTemp->setVal(m_Measurements.temperature);
-            m_HumiditySensorCurrentHumidity->setVal(m_Measurements.humidity);
+        BME280_SensorMeasurements measurements;
+        if(Subscriber<BME280_SensorMeasurements>::get(&measurements)) {
+            m_TempSensorCurrentTemp->setVal(measurements.temperature);
+            m_HumiditySensorCurrentHumidity->setVal(measurements.humidity);
         }
         homeSpan.poll();
         runned();
     }
-    Model<BME280_SensorMeasurements>* sensorModel() { return &m_SensorModel; }
 protected:
-    BME280_SensorMeasurements m_Measurements;
-    Model<BME280_SensorMeasurements> m_SensorModel;
     Characteristic::CurrentTemperature* m_TempSensorCurrentTemp;
     Characteristic::CurrentRelativeHumidity* m_HumiditySensorCurrentHumidity;
 };
