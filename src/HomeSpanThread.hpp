@@ -1,18 +1,17 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Thread.h>
 #include <SparkFunBME280.h>
 #include <HomeSpan.h>
+#include "BucketThread.hpp"
 #include "Model.hpp"
 
-class HomeSpanThread : public Thread {
+class HomeSpanThread : public BucketThread {
 public:
-    bool init() {
+    bool init() override {
         if(!m_SensorModel.init()) return false;
         setInterval(0);
-        homeSpan.setControlPin(BUTTON_A);
-
+        // homeSpan.setControlPin(BUTTON_A);
         homeSpan.begin(Category::Other, "Troy");
         new SpanAccessory();
             new Service::AccessoryInformation();
@@ -34,7 +33,7 @@ public:
 
         return true;
     }
-    void run() {
+    void run() override {
         if(m_SensorModel.get(&m_Measurements)) {
             m_TempSensorCurrentTemp->setVal(m_Measurements.temperature);
             m_HumiditySensorCurrentHumidity->setVal(m_Measurements.humidity);

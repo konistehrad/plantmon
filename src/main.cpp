@@ -1,22 +1,26 @@
 #include <Arduino.h>
 #include <Thread.h>
 #include <StaticThreadController.h>
-
-#define M5_NEO_NUM 10
-#define M5_NEO_PIN 15
+#include <FastLED.h>
 
 #include "Model.hpp"
+#include "LedThread.hpp"
 #include "HomeSpanThread.hpp"
 #include "SensorThread.hpp"
 #include "StatusThread.hpp"
 #include "ViewThread.hpp"
 
+const uint8_t M5_NEO_NUM = 10;
+const uint8_t M5_NEO_PIN = 15;
+
+LedThread<M5_NEO_PIN, M5_NEO_NUM> ledThread;
 HomeSpanThread homeSpanThread;
 SensorThread sensorThread;
 StatusThread statusThread;
 ViewThread viewThread;
 
-StaticThreadController<4> threads(
+StaticThreadController<5> threads(
+  &ledThread,
   &homeSpanThread, 
   &sensorThread, 
   &statusThread, 
@@ -24,19 +28,21 @@ StaticThreadController<4> threads(
 );
 
 void setup() {
+  ledThread.init();
+
   // if use M5GO button, need set gpio15 OD or PP mode to avoid affecting the wifi signal
   pinMode(15, OUTPUT_OPEN_DRAIN);
-  Serial.begin(115200);
-  
+
   // wait until serial attaches or 4s passes...
-  while(!Serial && !Serial.available() && millis() < 2000);
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
   
+  Wire.begin();
+  // bootstrap power supply...
+  statusThread.init();
   homeSpanThread.init();
   sensorThread.init();
-  statusThread.init();
   viewThread.init();
 
   sensorThread.addModel(homeSpanThread.sensorModel());

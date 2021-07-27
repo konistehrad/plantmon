@@ -8,16 +8,16 @@
 #include "IP5306.h"
 
 int ip5306_get_reg(uint8_t reg){
-    Wire.beginTransmission(0x75);
+    Wire.beginTransmission(IP5306_ADDR);
     Wire.write(reg);
-    if(Wire.endTransmission(false) == 0 && Wire.requestFrom(0x75, 1)){
+    if(Wire.endTransmission(false) == 0 && Wire.requestFrom(IP5306_ADDR, 1)){
         return Wire.read();
     }
     return -1;
 }
 
 int ip5306_set_reg(uint8_t reg, uint8_t value){
-    Wire.beginTransmission(0x75);
+    Wire.beginTransmission(IP5306_ADDR);
     Wire.write(reg);
     Wire.write(value);
     if(Wire.endTransmission(true) == 0){
