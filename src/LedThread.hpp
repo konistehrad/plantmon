@@ -33,7 +33,12 @@ public:
   void run() override {
     SystemData systemData;
     if(Subscriber<SystemData>::get(&systemData)) {
-
+      if(!m_systemData.wifiData.connected() && systemData.wifiData.connected()) {
+        overlayFX(new PulseOverlayFX(NUM_LEDS, 20, 3, NamedPalettes::getInstance()["green"]));
+      } else if(m_systemData.wifiData.connected() && !systemData.wifiData.connected()) {
+        overlayFX(new PulseOverlayFX(NUM_LEDS, 50, 0, NamedPalettes::getInstance()["red"]));
+      }
+      m_systemData = std::move(systemData);
     }
     m_fxctrlr.update();
     runned();
@@ -69,4 +74,5 @@ protected:
   FFXController m_fxctrlr;
   FFXBase* m_baseFX;
   FFXOverlay* m_overlayFX;
+  SystemData m_systemData;
 };

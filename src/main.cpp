@@ -29,7 +29,7 @@ StaticThreadController<5> threads(
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
+  while (!Serial && millis() < 2000);
 
   // if use M5GO button, need set gpio15 OD or PP mode to avoid affecting the wifi signal
   pinMode(15, OUTPUT_OPEN_DRAIN);
