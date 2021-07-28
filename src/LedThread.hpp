@@ -17,15 +17,16 @@ public:
   LedThread() : m_baseFX(NULL), m_overlayFX(NULL) {}
 
   bool init() override {
+    if(!Subscriber<SystemData>::init()) return false;
     FastLED.addLeds<NEOPIXEL, PIN>(m_leds, NUM_LEDS);
     FastLED.clear();
     m_fxctrlr.initialize(new FFXFastLEDPixelController(m_leds, NUM_LEDS));
-    m_fxctrlr.getPrimarySegment()->setFX(baseFX(new SolidFX(NUM_LEDS)));
-    m_fxctrlr.getPrimarySegment()->setBrightness(100);
+    baseFX(new SolidFX(NUM_LEDS));
+    brightness(100);
     return true;
   }
 
-  void setColorImmediate(CRGB& color) {
+  void setColorImmediate(const CRGB& color) {
     if(m_baseFX) m_baseFX->setColor(color);
   }
 
@@ -38,6 +39,9 @@ public:
     runned();
   }
 protected:
+  void brightness(uint8_t bri) { m_fxctrlr.getPrimarySegment()->setBrightness(bri); }
+  uint8_t brightness() { return m_fxctrlr.getPrimarySegment()->getBrightness(); }
+
   FFXBase* baseFX() { return m_baseFX; }
   FFXBase* baseFX(FFXBase* basefx) {
     m_baseFX = basefx;

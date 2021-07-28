@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Arduino.h>
 #include <vector>
 #include <freertos/FreeRTOS.h>
 
@@ -7,25 +8,24 @@ template <class T>
 class Model 
 {
 public:
-  Model() { m_Queue = NULL; }
-  ~Model() { if(m_Queue) vQueueDelete(m_Queue); m_Queue = NULL; }
-  bool init() { m_Queue = xQueueCreate(1, sizeof(T)); return m_Queue; }
+  Model() : m_Queue(NULL) { }
+  // ~Model() { if(m_Queue) vQueueDelete(m_Queue); m_Queue = NULL; }
+  bool init() { 
+    m_Queue = xQueueCreate(1, sizeof(T)); 
+    if(!m_Queue) {
+      Serial.println("xQueueCreate failed!!!");
+      for(;;);
+    }
+    return m_Queue; 
+  }
   bool available() { return uxQueueMessagesWaiting(m_Queue) > 0; }
   bool peek(T* val) { return xQueuePeek(m_Queue, val, 0); }
   bool get(T* val) { return xQueueReceive(m_Queue, val, 0); }
-  bool set(T& val) { return xQueueOverwrite(m_Queue, &val); }
+  bool set(T& val) { 
+    return xQueueOverwrite(m_Queue, &val); 
+  }
 private:
   QueueHandle_t m_Queue;
-};
-
-template <class T>
-class ModelList
-{
-public:
-  void add(Model<T>* model) { m_Models.push_back(model); }
-  void set(T& val) { for(Model<T>* m : m_Models) m->set(val); }
-private:
-  std::vector<Model<T>*> m_Models;
 };
 
 template <class T>
@@ -45,12 +45,15 @@ template <class T>
 class Publisher
 {
 public:
-  void subscribe(Subscriber<T>& sub) { m_Models.add(sub.model()); }
-  void subscribe(Subscriber<T>& sub0, Subscriber<T>& sub1) { 
-    m_Models.add(sub0.model()); 
-    m_Models.add(sub1.model());
+  void subscribe(Subscriber<T>& sub) { 
+    m_Models.push_back(sub.model()); 
   }
-  void publish(T& val) { m_Models.set(val); }
+  void subscribe(Subscriber<T>& sub0, Subscriber<T>& sub1) { 
+    subscribe(sub0); subscribe(sub1);
+  }
+  void publish(T& val) { 
+    for(auto m : m_Models) m->set(val); 
+  }
 protected:
-  ModelList<T> m_Models;
+  std::vector<Model<T>*> m_Models;
 };

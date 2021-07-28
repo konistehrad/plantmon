@@ -22,6 +22,7 @@ class ViewThread :
 public:
   bool init() override {
     if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
+    if(!Subscriber<SystemData>::init()) return false;
     setInterval(5);
     
     // Init the back-light LED PWM

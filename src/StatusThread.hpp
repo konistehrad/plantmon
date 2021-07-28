@@ -39,15 +39,25 @@ public:
 
   void run() {
     SystemData systemData;
-
+    
     systemData.powerData.powerSource = (PowerData::PowerSourceType)IP5306_GetPowerSource();
-    systemData.powerData.batteryFull = IP5306_GetBatteryFull();
-    systemData.powerData.percentage = IP5306_LEDS2PCT(IP5306_GetLevelLeds());
+    if(systemData.powerData.powerSource == PowerData::VIN) {
+      systemData.powerData.batteryFull = IP5306_GetBatteryFull();
+    } else {
+      systemData.powerData.percentage = IP5306_LEDS2PCT(IP5306_GetLevelLeds());
+    }
 
     systemData.wifiData.status = WiFi.status();
-    systemData.wifiData.rssi = WiFi.RSSI();
+    if(systemData.wifiData.connected()) {
+      systemData.wifiData.rssi = WiFi.RSSI();
+    }
     
-    Publisher<SystemData>::publish(systemData);
+    if(!m_systemData.equals(systemData)) {
+      m_systemData = std::move(systemData);
+      Publisher<SystemData>::publish(m_systemData);
+    }
     runned();
   }
+private:
+  SystemData m_systemData;  
 };

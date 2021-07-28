@@ -28,25 +28,30 @@ StaticThreadController<5> threads(
 );
 
 void setup() {
-  ledThread.init();
+  Serial.begin(115200);
+  while (!Serial);
 
   // if use M5GO button, need set gpio15 OD or PP mode to avoid affecting the wifi signal
   pinMode(15, OUTPUT_OPEN_DRAIN);
 
-  // wait until serial attaches or 4s passes...
-  pinMode(BUTTON_A, INPUT_PULLUP);
-  pinMode(BUTTON_B, INPUT_PULLUP);
-  pinMode(BUTTON_C, INPUT_PULLUP);
-  
   Wire.begin();
+  Serial.println("ledThread.init");
+  if(!ledThread.init()) for(;;);
   // bootstrap power supply...
-  statusThread.init();
-  homeSpanThread.init();
-  sensorThread.init();
-  viewThread.init();
+  Serial.println("statusThread.init");
+  if(!statusThread.init()) for(;;);
+  Serial.println("homeSpanThread.init");
+  if(!homeSpanThread.init()) for(;;);
+  Serial.println("sensorThread.init");
+  if(!sensorThread.init()) for(;;);
+  Serial.println("viewThread.init");
+  if(!viewThread.init()) for(;;);
 
+  Serial.println("sensorThread.subscribe(homeSpanThread, viewThread)");
   sensorThread.subscribe(homeSpanThread, viewThread);
+  Serial.println("sensorThread.subscribe(ledThread, viewThread)");
   statusThread.subscribe(ledThread, viewThread);
+  Serial.println("Setup done!");
 }
 
 void loop() {
