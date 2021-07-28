@@ -20,7 +20,10 @@ class ViewThread :
   public Subscriber<SystemData>
 {
 public:
+  const char* name() override { return "ViewThread"; }
+
   bool init() override {
+    if(!BucketThread::init()) return false;
     if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
     if(!Subscriber<SystemData>::init()) return false;
     setInterval(5);

@@ -14,9 +14,12 @@ class LedThread :
   public Subscriber<SystemData>
 {
 public:
+  const char* name() override { return "LedThread"; }
+
   LedThread() : m_baseFX(NULL), m_overlayFX(NULL) {}
 
   bool init() override {
+    if(!BucketThread::init()) return false;
     if(!Subscriber<SystemData>::init()) return false;
     FastLED.addLeds<NEOPIXEL, PIN>(m_leds, NUM_LEDS);
     FastLED.clear();
@@ -34,8 +37,10 @@ public:
     SystemData systemData;
     if(Subscriber<SystemData>::get(&systemData)) {
       if(!m_systemData.wifiData.connected() && systemData.wifiData.connected()) {
-        overlayFX(new PulseOverlayFX(NUM_LEDS, 20, 3, NamedPalettes::getInstance()["green"]));
+        brightness(30);
+        overlayFX(new PulseOverlayFX(NUM_LEDS, 20, 2, NamedPalettes::getInstance()["green"]));
       } else if(m_systemData.wifiData.connected() && !systemData.wifiData.connected()) {
+        brightness(100);
         overlayFX(new PulseOverlayFX(NUM_LEDS, 50, 0, NamedPalettes::getInstance()["red"]));
       }
       m_systemData = std::move(systemData);

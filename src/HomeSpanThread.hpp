@@ -11,7 +11,10 @@ class HomeSpanThread :
     public Subscriber<BME280_SensorMeasurements>
 {
 public:
+  const char* name() override { return "HomespanThread"; }
+  
   bool init() override {
+    if(!BucketThread::init()) return false;
     if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
 
     setInterval(0);

@@ -19,15 +19,9 @@ SensorThread sensorThread;
 StatusThread statusThread;
 ViewThread viewThread;
 
-StaticThreadController<5> threads(
-  &ledThread,
-  &homeSpanThread, 
-  &sensorThread, 
-  &statusThread, 
-  &viewThread
-);
-
 void setup() {
+  BucketThread::bootstrap();
+
   Serial.begin(115200);
   while (!Serial && millis() < 2000);
 
@@ -35,25 +29,19 @@ void setup() {
   pinMode(15, OUTPUT_OPEN_DRAIN);
 
   Wire.begin();
-  Serial.println("ledThread.init");
   if(!ledThread.init()) for(;;);
   // bootstrap power supply...
-  Serial.println("statusThread.init");
   if(!statusThread.init()) for(;;);
-  Serial.println("homeSpanThread.init");
   if(!homeSpanThread.init()) for(;;);
-  Serial.println("sensorThread.init");
   if(!sensorThread.init()) for(;;);
-  Serial.println("viewThread.init");
   if(!viewThread.init()) for(;;);
 
-  Serial.println("sensorThread.subscribe(homeSpanThread, viewThread)");
   sensorThread.subscribe(homeSpanThread, viewThread);
-  Serial.println("sensorThread.subscribe(ledThread, viewThread)");
   statusThread.subscribe(ledThread, viewThread);
-  Serial.println("Setup done!");
+  
+  BucketThread::ready();
 }
 
 void loop() {
-  threads.run();
+  BucketThread::service();
 }

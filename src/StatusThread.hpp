@@ -26,8 +26,29 @@ class StatusThread :
   public BucketThread,
   public Publisher<SystemData>
 {
+protected:
+  static int ip5306_get_reg(uint8_t reg){
+    Wire.beginTransmission(0x75);
+    Wire.write(reg);
+    if(Wire.endTransmission(false) == 0 && Wire.requestFrom(0x75, 1)){
+      return Wire.read();
+    }
+    return -1;
+  }
+  
+  static uint8_t ip5306_get_bits(uint8_t reg, uint8_t index, uint8_t bits){
+    int value = ip5306_get_reg(reg);
+    if(value < 0){
+      Serial.printf("ip5306_get_bits fail: 0x%02x\n", reg);
+      return 0;
+    }
+    return (value >> index) & ((1 << bits)-1);
+  }
 public:
+  const char* name() override { return "StatusThread"; }
+
   bool init() override { 
+    if(!BucketThread::init()) return false;
     IP5306_SetVinCurrent(CURRENT_400MA);
     IP5306_SetChargingFullStopVoltage(BAT_4_2V);
     IP5306_SetEndChargeCurrentDetection(0); // End charge current 200ma
@@ -40,12 +61,14 @@ public:
   void run() {
     SystemData systemData;
     
-    systemData.powerData.powerSource = (PowerData::PowerSourceType)IP5306_GetPowerSource();
+    TakeWireMutex();
+    systemData.powerData.powerSource = (PowerData::PowerSourceType)ip5306_get_bits(IP5306_REG_READ_0, 3, 1);
     if(systemData.powerData.powerSource == PowerData::VIN) {
       systemData.powerData.batteryFull = IP5306_GetBatteryFull();
     } else {
       systemData.powerData.percentage = IP5306_LEDS2PCT(IP5306_GetLevelLeds());
     }
+    GiveWireMutex();
 
     systemData.wifiData.status = WiFi.status();
     if(systemData.wifiData.connected()) {

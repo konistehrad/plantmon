@@ -14,24 +14,29 @@ class SensorThread :
   public Publisher<BME280_SensorMeasurements>
 {
 public:
+  const char* name() override { return "SensorThread"; }
+
   bool init() override {
-    if (!m_ClimateSensor.beginI2C(Wire)) return false;
+    if(!BucketThread::init()) return false;
+    if(!m_ClimateSensor.beginI2C(Wire)) return false;
     m_ClimateSensor.setTempOverSample(1);
     m_ClimateSensor.setHumidityOverSample(1);
     m_ClimateSensor.setPressureOverSample(0);
     return true;
   }
   void run() {
+    TakeWireMutex();
     if(m_ClimateSensor.isMeasuring()) {
+      GiveWireMutex();
       setInterval(10);
       runned();
       return;
     }
 
     m_ClimateSensor.readAllMeasurements(&m_ClimateMeasurements, CELSIUS_SCALE);
+    GiveWireMutex();
     Publisher<BME280_SensorMeasurements>::publish(m_ClimateMeasurements);
     setInterval(500);
-    runned();
   }
 
 protected:
