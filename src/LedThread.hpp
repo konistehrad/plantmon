@@ -11,7 +11,7 @@
 template <int PIN, int NUM_LEDS>
 class LedThread : 
   public BucketThread, 
-  public Subscriber<SystemData>
+  public Subscriber<WifiData>
 {
 public:
   const char* name() override { return "LedThread"; }
@@ -20,7 +20,7 @@ public:
 
   bool init() override {
     if(!BucketThread::init()) return false;
-    if(!Subscriber<SystemData>::init()) return false;
+    if(!Subscriber<WifiData>::init()) return false;
     FastLED.addLeds<NEOPIXEL, PIN>(m_leds, NUM_LEDS);
     FastLED.clear();
     m_fxctrlr.initialize(new FFXFastLEDPixelController(m_leds, NUM_LEDS));
@@ -34,16 +34,16 @@ public:
   }
 
   void run() override {
-    SystemData systemData;
-    if(Subscriber<SystemData>::get(&systemData)) {
-      if(!m_systemData.wifiData.connected() && systemData.wifiData.connected()) {
+    WifiData wifiData;
+    if(Subscriber<WifiData>::get(&wifiData)) {
+      if(!m_WifiData.connected() && wifiData.connected()) {
         brightness(30);
         overlayFX(new PulseOverlayFX(NUM_LEDS, 20, 2, NamedPalettes::getInstance()["green"]));
-      } else if(m_systemData.wifiData.connected() && !systemData.wifiData.connected()) {
+      } else if(m_WifiData.connected() && !wifiData.connected()) {
         brightness(100);
         overlayFX(new PulseOverlayFX(NUM_LEDS, 50, 0, NamedPalettes::getInstance()["red"]));
       }
-      m_systemData = std::move(systemData);
+      m_WifiData = std::move(wifiData);
     }
     m_fxctrlr.update();
     runned();
@@ -79,5 +79,5 @@ protected:
   FFXController m_fxctrlr;
   FFXBase* m_baseFX;
   FFXOverlay* m_overlayFX;
-  SystemData m_systemData;
+  WifiData m_WifiData;
 };

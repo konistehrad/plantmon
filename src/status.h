@@ -26,12 +26,3 @@ struct WifiData {
     return memcmp(this, &d, sizeof(WifiData)) == 0; 
   }
 };
-
-struct SystemData {
-  PowerData powerData;
-  WifiData wifiData;
-  bool equals(const SystemData& d) const { 
-    if(&d == NULL) return false;
-    return powerData.equals(d.powerData) && wifiData.equals(d.wifiData);
-  }
-};

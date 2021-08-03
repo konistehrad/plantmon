@@ -1,22 +1,18 @@
 #include <Arduino.h>
-#include <Thread.h>
-#include <StaticThreadController.h>
 #include <FastLED.h>
 
 #include "Model.hpp"
 #include "LedThread.hpp"
-#include "HomeSpanThread.hpp"
 #include "SensorThread.hpp"
-#include "StatusThread.hpp"
+#include "PowerThread.hpp"
 #include "ViewThread.hpp"
 
 const uint8_t M5_NEO_NUM = 10;
 const uint8_t M5_NEO_PIN = 15;
 
 LedThread<M5_NEO_PIN, M5_NEO_NUM> ledThread;
-HomeSpanThread homeSpanThread;
 SensorThread sensorThread;
-StatusThread statusThread;
+PowerThread powerThread;
 ViewThread viewThread;
 
 void setup() {
@@ -31,13 +27,12 @@ void setup() {
   Wire.begin();
   if(!ledThread.init()) for(;;);
   // bootstrap power supply...
-  if(!statusThread.init()) for(;;);
-  if(!homeSpanThread.init()) for(;;);
+  if(!powerThread.init()) for(;;);
   if(!sensorThread.init()) for(;;);
   if(!viewThread.init()) for(;;);
 
-  sensorThread.subscribe(homeSpanThread, viewThread);
-  statusThread.subscribe(ledThread, viewThread);
+  sensorThread.subscribe(viewThread);
+  powerThread.subscribe(viewThread);
   
   BucketThread::ready();
 }

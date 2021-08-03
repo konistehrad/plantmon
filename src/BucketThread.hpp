@@ -27,8 +27,9 @@ protected:
     }
   }
 public:
-  static void bootstrap() { 
+  static bool bootstrap() { 
     wireMutex = xSemaphoreCreateMutex();
+    return static_cast<bool>(wireMutex);
   }
   static void ready() {
     for(auto t : allThreads) {

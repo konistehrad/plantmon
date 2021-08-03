@@ -17,7 +17,8 @@ const uint8_t BLK_PWM_CHANNEL = 7;
 class ViewThread : 
   public BucketThread,
   public Subscriber<BME280_SensorMeasurements>,
-  public Subscriber<SystemData>
+  public Subscriber<PowerData>,
+  public Subscriber<WifiData>
 {
 public:
   const char* name() override { return "ViewThread"; }
@@ -25,7 +26,8 @@ public:
   bool init() override {
     if(!BucketThread::init()) return false;
     if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
-    if(!Subscriber<SystemData>::init()) return false;
+    if(!Subscriber<PowerData>::init()) return false;
+    if(!Subscriber<WifiData>::init()) return false;
     setInterval(5);
     
     // Init the back-light LED PWM
@@ -76,7 +78,7 @@ protected:
   int m_Brightness;
 
   void checkSubs() {
-    SystemData systemData;
+    PowerData powerData;
     BME280_SensorMeasurements measurements;
     if(Subscriber<BME280_SensorMeasurements>::get(&measurements)) {
       String tempString = String((int)(measurements.temperature * 1.8f + 32)) + String("°F");
@@ -86,33 +88,36 @@ protected:
       lv_label_set_text(HumidityValue, humidString.c_str());
     }
 
-    if(Subscriber<SystemData>::get(&systemData)) {
-      if(systemData.powerData.powerSource == PowerData::VIN) {
-        if(systemData.powerData.batteryFull) {
+    if(Subscriber<PowerData>::get(&powerData)) {
+      if(powerData.powerSource == PowerData::VIN) {
+        if(powerData.batteryFull) {
           lv_img_set_src(BatteryIcon, &battery_discharging_full);
         } else {
           lv_img_set_src(BatteryIcon, &battery_charging);
         }
       } else {
-        if(systemData.powerData.percentage >= 75) {
+        if(powerData.percentage >= 75) {
           lv_img_set_src(BatteryIcon, &battery_discharging_full);
-        } else if(systemData.powerData.percentage >= 50) {
+        } else if(powerData.percentage >= 50) {
           lv_img_set_src(BatteryIcon, &battery_discharging_66);
-        } else if(systemData.powerData.percentage >= 33) {
+        } else if(powerData.percentage >= 33) {
           lv_img_set_src(BatteryIcon, &battery_discharging_33);
         } else {
           lv_img_set_src(BatteryIcon, &battery_discharging_0);
         }
       }
+    }
 
-      if(systemData.wifiData.connected()) {
-        if(systemData.wifiData.rssi >= -60) {
+    /*
+    if(Subscriber<WifiData>::get(&wifiData)) {
+      if(wifiData.connected()) {
+        if(wifiData.rssi >= -60) {
           lv_img_set_src(WifiIcon, &wifi_connected_full);
-        } else if(systemData.wifiData.rssi >= -70) {
+        } else if(wifiData.rssi >= -70) {
           lv_img_set_src(WifiIcon, &wifi_connected_66);
-        } else if(systemData.wifiData.rssi >= -80) {
+        } else if(wifiData.rssi >= -80) {
           lv_img_set_src(WifiIcon, &wifi_connected_50);
-        } else if(systemData.wifiData.rssi >= -90) {
+        } else if(wifiData.rssi >= -90) {
           lv_img_set_src(WifiIcon, &wifi_connected_33);
         } else {
           lv_img_set_src(WifiIcon, &wifi_connected_0);
@@ -121,6 +126,7 @@ protected:
         lv_img_set_src(WifiIcon, &wifi_disconnected);
       }
     }
+    */
   }
 
 private:
@@ -128,7 +134,7 @@ private:
   static void lv_tick_handler(void) { lv_tick_inc(lv_tick_interval_ms); }
   static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
   {
-    TFT_eSPI* tft = (TFT_eSPI*)disp->user_data;
+    TFT_eSPI* tft = static_cast<TFT_eSPI*>(disp->user_data);
     uint32_t w = (area->x2 - area->x1 + 1);
     uint32_t h = (area->y2 - area->y1 + 1);
     tft->startWrite();

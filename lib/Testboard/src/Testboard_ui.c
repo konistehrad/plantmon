@@ -263,6 +263,7 @@ void BuildPages(void)
 
     lv_obj_align(HumidityLabel, RootPanel, LV_ALIGN_IN_TOP_LEFT, 85, 136); // force: 68
 
+    /* XXX: FAN
     FanIcon = lv_img_create(RootPanel, NULL);
     lv_img_set_src(FanIcon, &fanicon);
     lv_obj_set_style_local_image_recolor(FanIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
@@ -306,7 +307,7 @@ void BuildPages(void)
     lv_obj_set_style_local_text_opa(FanLabel, LV_BTN_PART_MAIN, LV_STATE_DEFAULT, 255);
 
     lv_obj_align(FanLabel, RootPanel, LV_ALIGN_IN_TOP_LEFT, 85, 208); // force: 78
-
+    */
     
     WifiIcon = lv_img_create(RootPanel, NULL);
     lv_img_set_src(WifiIcon, &wifi_connected_0);
