@@ -6,15 +6,15 @@
 class BucketThread {
 protected:
   static SemaphoreHandle_t wireMutex;
-  static BaseType_t TakeWireMutex() {
+  static std::vector<BucketThread*> allThreads;
+  static inline BaseType_t TakeWireMutex() {
     do {} while (xSemaphoreTakeRecursive(wireMutex, portMAX_DELAY) != pdPASS);
     return pdPASS;
   }
-  static BaseType_t GiveWireMutex() {
+  static inline BaseType_t GiveWireMutex() {
     xSemaphoreGive(wireMutex);
     return pdPASS;
   }
-  static std::vector<BucketThread*> allThreads;
   static void runTrampoline(void* pThis) { 
     BucketThread* thread = (BucketThread*)pThis;
     for(;;) {
