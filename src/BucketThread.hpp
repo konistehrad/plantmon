@@ -17,6 +17,7 @@ protected:
   }
   static void runTrampoline(void* pThis) { 
     BucketThread* thread = (BucketThread*)pThis;
+    thread->start();
     for(;;) {
       if(thread->m_interval > 0) {
         delay(thread->m_interval);
@@ -29,7 +30,7 @@ protected:
 public:
   static bool bootstrap() { 
     wireMutex = xSemaphoreCreateMutex();
-    return static_cast<bool>(wireMutex);
+    return (bool)wireMutex;
   }
   static void ready() {
     for(auto t : allThreads) {
@@ -52,6 +53,8 @@ public:
     allThreads.push_back(this);
     return true;
   }
+
+  virtual void start() {}
 
   void setInterval(uint32_t i) {
     m_interval = i;

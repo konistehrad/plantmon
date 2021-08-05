@@ -134,7 +134,7 @@ private:
   static void lv_tick_handler(void) { lv_tick_inc(lv_tick_interval_ms); }
   static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
   {
-    TFT_eSPI* tft = static_cast<TFT_eSPI*>(disp->user_data);
+    TFT_eSPI* tft = (TFT_eSPI*)disp->user_data;
     uint32_t w = (area->x2 - area->x1 + 1);
     uint32_t h = (area->y2 - area->y1 + 1);
     tft->startWrite();
