@@ -29,7 +29,6 @@ public:
     if(m_ClimateSensor.isMeasuring()) {
       GiveWireMutex();
       setInterval(10);
-      runned();
       return;
     }
 

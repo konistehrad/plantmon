@@ -46,7 +46,6 @@ public:
       m_WifiData = std::move(wifiData);
     }
     m_fxctrlr.update();
-    runned();
   }
 protected:
   void brightness(uint8_t bri) { m_fxctrlr.getPrimarySegment()->setBrightness(bri); }

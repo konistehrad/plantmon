@@ -52,12 +52,10 @@ public:
     }
     GiveWireMutex();
 
-    
     if(!m_PowerData.equals(powerData)) {
       m_PowerData = std::move(powerData);
       Publisher<PowerData>::publish(m_PowerData);
     }
-    runned();
   }
 private:
   PowerData m_PowerData;  

@@ -102,7 +102,6 @@ public:
   
   void run() override {
     m_WifiManager.process();
-
   }
 
 private:

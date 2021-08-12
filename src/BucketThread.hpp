@@ -63,8 +63,6 @@ public:
   virtual void run() = 0;
   virtual const char* name() { return "UNASSIGNED"; }
 protected:
-  // backcomp
-  void runned() {  }
   TaskHandle_t m_taskHandle;
   uint32_t m_interval;
 };

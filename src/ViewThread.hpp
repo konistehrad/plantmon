@@ -57,6 +57,7 @@ public:
 
     BuildPages();
     lv_scr_load(Screen1);
+    lv_img_set_src(WifiIcon, &wifi_disconnected);
     return true;
   }
   
@@ -64,7 +65,6 @@ public:
     if(millis() < 500) return;
     checkSubs();
     lv_task_handler();
-    runned();
   }
 
   void brightness(uint8_t b) { lcd.setBrightness(b); }
