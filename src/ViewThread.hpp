@@ -16,10 +16,12 @@
 const uint8_t BLK_PWM_CHANNEL = 7;
 
 class ViewThread : 
-  public BucketThread,
-  public Subscriber<BME280_SensorMeasurements>,
-  public Subscriber<PowerData>,
-  public Subscriber<WifiData>
+   public BucketThread
+  ,public Subscriber<BME280_SensorMeasurements>
+  ,public Subscriber<PowerData>
+#if PLANTMON_USE_WIFI == 1
+  ,public Subscriber<WifiData>
+#endif
 {
 public:
   const char* name() override { return "ViewThread"; }
@@ -28,7 +30,9 @@ public:
     if(!BucketThread::init()) return false;
     if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
     if(!Subscriber<PowerData>::init()) return false;
+#if PLANTMON_USE_WIFI == 1
     if(!Subscriber<WifiData>::init()) return false;
+#endif
     setInterval(5);
     
     // LVGL INITIALIZATION ROUTINES HERE!
@@ -44,7 +48,7 @@ public:
     lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
     disp_drv.hor_res = LV_HOR_RES_MAX;
-    disp_drv.ver_res = LV_VER_RES_MAX; //rotation
+    disp_drv.ver_res = LV_VER_RES_MAX;
     disp_drv.flush_cb = my_disp_flush;
     disp_drv.user_data = (void*)(&lcd);
     disp_drv.buffer = &disp_buf;
@@ -63,8 +67,8 @@ public:
     runned();
   }
 
-  void brightness(uint8_t b) { ledcWrite(BLK_PWM_CHANNEL, m_Brightness = b); }
-  uint8_t brightness() { return m_Brightness; }
+  void brightness(uint8_t b) { lcd.setBrightness(b); }
+  uint8_t brightness() { return lcd.getBrightness(); }
 
 protected:
   lv_disp_buf_t disp_buf;
@@ -106,6 +110,7 @@ protected:
       }
     }
 
+#if PLANTMON_USE_WIFI == 1
     if(Subscriber<WifiData>::get(&wifiData)) {
       if(wifiData.connected()) {
         if(wifiData.rssi >= -60) {
@@ -123,6 +128,7 @@ protected:
         lv_img_set_src(WifiIcon, &wifi_disconnected);
       }
     }
+#endif
   }
 
 private:

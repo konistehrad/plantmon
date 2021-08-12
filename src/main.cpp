@@ -7,7 +7,12 @@
 #include "SensorThread.hpp"
 #include "PowerThread.hpp"
 #include "ViewThread.hpp"
+#if PLANTMON_USE_BLE == 1
+#include "BLEThread.hpp"
+#endif
+#if PLANTMON_USE_WIFI == 1
 #include "WifiThread.hpp"
+#endif
 
 const uint8_t M5_NEO_NUM = 10;
 const uint8_t M5_NEO_PIN = 15;
@@ -16,7 +21,12 @@ LedThread<M5_NEO_PIN, M5_NEO_NUM> ledThread;
 SensorThread sensorThread;
 PowerThread powerThread;
 ViewThread viewThread;
+#if PLANTMON_USE_WIFI == 1
 WifiThread wifiThread;
+#endif
+#if PLANTMON_USE_BLE == 1
+BLEThread bleThread;
+#endif
 
 static void printAndDie(const char* message) {
   String out = String(message) + String(" failed. Please restart.");
@@ -38,11 +48,17 @@ void setup() {
   if(!powerThread.init()) printAndDie("powerThread.init");
   if(!sensorThread.init()) printAndDie("sensorThread.init");
   if(!viewThread.init()) printAndDie("viewThread.init");
+#if PLANTMON_USE_WIFI == 1
   if(!wifiThread.init()) printAndDie("wifiThread.init");
+  wifiThread.Publisher<WifiData>::subscribe(viewThread);
+#endif
+#if PLANTMON_USE_BLE == 1
+  if(!bleThread.init()) printAndDie("bleThread.init");
+  sensorThread.subscribe(bleThread);
+#endif
 
   sensorThread.subscribe(viewThread);
   powerThread.subscribe(viewThread);
-  wifiThread.Publisher<WifiData>::subscribe(viewThread);
   
   BucketThread::ready();
 }

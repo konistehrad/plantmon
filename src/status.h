@@ -40,3 +40,7 @@ struct MqttServerData {
   uint16_t portNum() { return atoi(port.c_str()); }
   String token;
 };
+
+struct BLEData {
+
+};
