@@ -8,6 +8,7 @@
 #include <SparkFunBME280.h>
 #include <LovyanGFX.hpp>
 #include <LGFX_AUTODETECT.hpp> 
+#include <JC_Button.h>
 #include "status.h"
 #include "BucketThread.hpp"
 #include "Model.hpp"
@@ -80,7 +81,6 @@ protected:
 
   void checkSubs() {
     PowerData powerData;
-    WifiData wifiData;
     BME280_SensorMeasurements measurements;
     if(Subscriber<BME280_SensorMeasurements>::get(&measurements)) {
       String tempString = String((int)(measurements.temperature * 1.8f + 32)) + String("°F");
@@ -111,6 +111,7 @@ protected:
     }
 
 #if PLANTMON_USE_WIFI == 1
+    WifiData wifiData;
     if(Subscriber<WifiData>::get(&wifiData)) {
       if(wifiData.connected()) {
         if(wifiData.rssi >= -60) {
