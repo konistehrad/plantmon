@@ -30,7 +30,7 @@ void setup() {
 
   Serial.begin(115200);
   Log.begin(LOG_LEVEL, &Serial);
-  while (!Serial && millis() < 2000);
+  while (!Serial && millis() < 2000) delay(10);
   if(!BucketThread::bootstrap()) printAndDie("BucketThread::bootstrap");
 
   Wire.begin();

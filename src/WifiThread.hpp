@@ -76,8 +76,6 @@ public:
     m_WifiManager.setSaveConfigCallback([&](){this->saveParams();});
     m_WifiManager.setConfigResetCallback([&](){this->clearParams();});
 
-    m_WifiManager.resetSettings();
-
     m_MqttServerParam = new WiFiManagerParameter("server", "MQTT Server", m_ServerData.address.c_str(), MQTT_SERVER_MAX_LEN);
     m_MqttPortParam = new WiFiManagerParameter("port", "MQTT Port", m_ServerData.port.c_str(), MQTT_PORT_MAX_LEN);
     m_MqttTokenParam = new WiFiManagerParameter("token", "MQTT Token", m_ServerData.token.c_str(), MQTT_TOKEN_MAX_LEN);
@@ -95,6 +93,7 @@ public:
     if (m_WifiManager.autoConnect(wifiName.c_str())) {
       Log.infoln("Wifi connected.");
       m_WifiData.status = WL_CONNECTED;
+      m_WifiData.rssi = WiFi.RSSI();
       Publisher<WifiData>::publish(m_WifiData);
     } else {
       Log.noticeln("Wifi did not connect, looping config portal.");
@@ -103,10 +102,8 @@ public:
   
   void run() override {
     m_WifiManager.process();
-  }
 
-protected:
-  WifiData m_WifiData;
+  }
 
 private:
   void clearParams() {
@@ -123,39 +120,39 @@ private:
     
     size = MQTT_SERVER_MAX_LEN;
     err = nvs_get_str(m_NvsHandle, NVS_MQTT_SERVER_KEY, buf, &size);
-    if(err == ESP_OK) m_ServerData.address = std::move(String(buf));
+    if(err == ESP_OK) m_ServerData.address = String(buf);
     else if(err != ESP_ERR_NVS_NOT_FOUND) return err;
     
     size = MQTT_PORT_MAX_LEN;
     err = nvs_get_str(m_NvsHandle, NVS_MQTT_PORT_KEY, buf, &size);
-    if(err == ESP_OK) m_ServerData.port = std::move(String(buf));
+    if(err == ESP_OK) m_ServerData.port = String(buf);
     else if(err != ESP_ERR_NVS_NOT_FOUND) return err;
 
     size = MQTT_TOKEN_MAX_LEN;
     err = nvs_get_str(m_NvsHandle, NVS_MQTT_TOKEN_KEY, buf, &size);
-    if(err == ESP_OK) m_ServerData.token = std::move(String(buf));
+    if(err == ESP_OK) m_ServerData.token = String(buf);
     else if(err != ESP_ERR_NVS_NOT_FOUND) return err;
 
     return ESP_OK;
   }
-  void saveParams() {
+
+  esp_err_t saveParam(WiFiManagerParameter* param, const char* key, String& backing) {
     esp_err_t err;
-    m_ServerData.address = std::move(String(m_MqttServerParam->getValue()));
-    err = nvs_set_str(m_NvsHandle, NVS_MQTT_SERVER_KEY, m_ServerData.address.c_str());
+    backing = String(param->getValue());
+    err = nvs_set_str(m_NvsHandle, key, backing.c_str());
     if(err != ESP_OK) {
-      Log.fatalln("Failed to save server value to NVS: %s", esp_err_to_name(err));
+      Log.fatalln("Failed to save '%s' to NVS: %s", key, esp_err_to_name(err));
     }
-    m_ServerData.port = std::move(String(m_MqttPortParam->getValue()));
-    err = nvs_set_str(m_NvsHandle, NVS_MQTT_PORT_KEY, m_ServerData.port.c_str());
-    if(err != ESP_OK) {
-      Log.fatalln("Failed to save port value to NVS: %s", esp_err_to_name(err));
-    }
-    m_ServerData.token = std::move(String(m_MqttTokenParam->getValue()));
-    err = nvs_set_str(m_NvsHandle, NVS_MQTT_TOKEN_KEY, m_ServerData.token.c_str());
-    if(err != ESP_OK) {
-      Log.fatalln("Failed to save token value to NVS: %s", esp_err_to_name(err));
-    }
+    return err;
   }
+  void saveParams() {
+    saveParam(m_MqttServerParam, NVS_MQTT_SERVER_KEY, m_ServerData.address);
+    saveParam(m_MqttPortParam, NVS_MQTT_PORT_KEY, m_ServerData.port);
+    saveParam(m_MqttTokenParam, NVS_MQTT_TOKEN_KEY, m_ServerData.token);
+    Publisher<MqttServerData>::publish(m_ServerData);
+  }
+
+  WifiData m_WifiData;
   MqttServerData m_ServerData;
   nvs_handle  m_NvsHandle;
   WiFiManager m_WifiManager;
