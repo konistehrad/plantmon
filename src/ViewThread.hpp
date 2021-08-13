@@ -19,18 +19,34 @@ const uint8_t BLK_PWM_CHANNEL = 7;
 class ViewThread : 
    public BucketThread
   ,public Subscriber<BME280_SensorMeasurements>
+#if PLANTMON_HAS_BATTERY==1
   ,public Subscriber<PowerData>
+#endif
 #if PLANTMON_USE_WIFI == 1
   ,public Subscriber<WifiData>
 #endif
 {
+private:
+  static const int lv_tick_interval_ms = 1;
+  static void lv_tick_handler(void) { lv_tick_inc(lv_tick_interval_ms); }
+  static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+  {
+    LGFX* lcd = (LGFX*)disp->user_data;
+    uint32_t w = (area->x2 - area->x1 + 1);
+    uint32_t h = (area->y2 - area->y1 + 1);
+    lcd->pushImageDMA(area->x1, area->y1, w, h, ( uint16_t * )&color_p->full);
+    lv_disp_flush_ready(disp);
+  }
+
 public:
   const char* name() override { return "ViewThread"; }
 
   bool init() override {
     if(!BucketThread::init()) return false;
     if(!Subscriber<BME280_SensorMeasurements>::init()) return false;
+#if PLANTMON_HAS_BATTERY==1
     if(!Subscriber<PowerData>::init()) return false;
+#endif
 #if PLANTMON_USE_WIFI == 1
     if(!Subscriber<WifiData>::init()) return false;
 #endif
@@ -90,6 +106,7 @@ protected:
       lv_label_set_text(HumidityValue, humidString.c_str());
     }
 
+#if PLANTMON_HAS_BATTERY==1
     if(Subscriber<PowerData>::get(&powerData)) {
       if(powerData.powerSource == PowerData::VIN) {
         if(powerData.batteryFull) {
@@ -109,6 +126,7 @@ protected:
         }
       }
     }
+#endif
 
 #if PLANTMON_USE_WIFI == 1
     WifiData wifiData;
@@ -130,17 +148,5 @@ protected:
       }
     }
 #endif
-  }
-
-private:
-  static const int lv_tick_interval_ms = 1;
-  static void lv_tick_handler(void) { lv_tick_inc(lv_tick_interval_ms); }
-  static void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
-  {
-    LGFX* lcd = (LGFX*)disp->user_data;
-    uint32_t w = (area->x2 - area->x1 + 1);
-    uint32_t h = (area->y2 - area->y1 + 1);
-    lcd->pushImageDMA(area->x1, area->y1, w, h, ( uint16_t * )&color_p->full);
-    lv_disp_flush_ready(disp);
   }
 };

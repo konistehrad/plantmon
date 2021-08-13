@@ -12,24 +12,32 @@ lv_obj_t * HumidityLabel;
 lv_obj_t * FanIcon;
 lv_obj_t * FanValue;
 lv_obj_t * FanLabel;
+#if PLANTMON_USE_WIFI == 1
 lv_obj_t * WifiIcon;
+#endif
+#if PLANTMON_HAS_BATTERY == 1
 lv_obj_t * BatteryIcon;
+#endif
 
 ///////////////////// IMAGES ////////////////////
 LV_IMG_DECLARE(fanicon);
 LV_IMG_DECLARE(humidicon);
 LV_IMG_DECLARE(thermicon);
+#if PLANTMON_HAS_BATTERY == 1
 LV_IMG_DECLARE(battery_charging);
 LV_IMG_DECLARE(battery_discharging_0);
 LV_IMG_DECLARE(battery_discharging_33);
 LV_IMG_DECLARE(battery_discharging_66);
 LV_IMG_DECLARE(battery_discharging_full);
+#endif
+#if PLANTMON_USE_WIFI == 1
 LV_IMG_DECLARE(wifi_connected_0);
 LV_IMG_DECLARE(wifi_connected_33);
 LV_IMG_DECLARE(wifi_connected_50);
 LV_IMG_DECLARE(wifi_connected_66);
 LV_IMG_DECLARE(wifi_connected_full);
 LV_IMG_DECLARE(wifi_disconnected);
+#endif
 
 ///////////////////// FUNCTIONS ////////////////////
 #define BAR_PROPERTY_VALUE 0
@@ -309,6 +317,7 @@ void BuildPages(void)
     lv_obj_align(FanLabel, RootPanel, LV_ALIGN_IN_TOP_LEFT, 85, 208); // force: 78
     */
     
+#if PLANTMON_USE_WIFI == 1
     WifiIcon = lv_img_create(RootPanel, NULL);
     lv_img_set_src(WifiIcon, &wifi_connected_0);
     lv_obj_set_style_local_image_recolor(WifiIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
@@ -319,7 +328,9 @@ void BuildPages(void)
     lv_obj_align(WifiIcon, RootPanel, LV_ALIGN_IN_TOP_RIGHT, -9, 7);
     lv_obj_set_drag(WifiIcon, false);
     lv_obj_clear_state(WifiIcon, LV_STATE_DISABLED);
+#endif
 
+#if PLANTMON_HAS_BATTERY == 1
     BatteryIcon = lv_img_create(RootPanel, NULL);
     lv_img_set_src(BatteryIcon, &battery_discharging_0);
     lv_obj_set_style_local_image_recolor(BatteryIcon, LV_IMG_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_WHITE);
@@ -330,6 +341,6 @@ void BuildPages(void)
     lv_obj_align(BatteryIcon, RootPanel, LV_ALIGN_IN_TOP_RIGHT, -54, 13);
     lv_obj_set_drag(BatteryIcon, false);
     lv_obj_clear_state(BatteryIcon, LV_STATE_DISABLED);
-
+#endif
 }
 
