@@ -45,16 +45,20 @@ void setup() {
 
   Wire.begin();
   if(!ledThread.init()) printAndDie("ledThread.init");
+#if PLANTMON_HAS_BATTERY==1
   if(!powerThread.init()) printAndDie("powerThread.init");
+#endif
   if(!sensorThread.init()) printAndDie("sensorThread.init");
   if(!viewThread.init()) printAndDie("viewThread.init");
 #if PLANTMON_USE_WIFI == 1
   if(!wifiThread.init()) printAndDie("wifiThread.init");
-  wifiThread.Publisher<WifiData>::subscribe(viewThread);
 #endif
 #if PLANTMON_USE_BLE == 1
   if(!bleThread.init()) printAndDie("bleThread.init");
   sensorThread.subscribe(bleThread);
+#endif
+#if PLANTMON_USE_WIFI == 1
+  wifiThread.Publisher<WifiData>::subscribe(viewThread);
 #endif
 
   sensorThread.subscribe(viewThread);

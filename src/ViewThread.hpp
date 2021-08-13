@@ -39,6 +39,8 @@ private:
   }
 
 public:
+  ViewThread() : m_Button(BUTTON_A) {}
+
   const char* name() override { return "ViewThread"; }
 
   bool init() override {
@@ -55,45 +57,60 @@ public:
     // LVGL INITIALIZATION ROUTINES HERE!
     lv_init();
 
-    lcd.init(); 
-    lcd.initDMA();
-    lcd.setRotation(1);
-    lcd.startWrite(); // hold the line.
+    m_Lcd.init(); 
+    m_Lcd.initDMA();
+    m_Lcd.setRotation(1);
+    m_Lcd.startWrite(); // hold the line.
     
-    lv_disp_buf_init(&disp_buf, buf1, buf2, LV_HOR_RES_MAX * 10);
+    lv_disp_buf_init(&m_DispBuf, m_Buf1, m_Buf2, LV_HOR_RES_MAX * 10);
 
     lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
     disp_drv.hor_res = LV_HOR_RES_MAX;
     disp_drv.ver_res = LV_VER_RES_MAX;
     disp_drv.flush_cb = my_disp_flush;
-    disp_drv.user_data = (void*)(&lcd);
-    disp_drv.buffer = &disp_buf;
+    disp_drv.user_data = (void*)(&m_Lcd);
+    disp_drv.buffer = &m_DispBuf;
     lv_disp_drv_register(&disp_drv);
     m_Ticker.attach_ms(lv_tick_interval_ms, lv_tick_handler);
 
     BuildPages();
     lv_scr_load(Screen1);
+
+    m_Button.begin();
+#if PLANTMON_USE_WIFI == 1
     lv_img_set_src(WifiIcon, &wifi_disconnected);
+#endif
     return true;
   }
   
   void run() {
     if(millis() < 500) return;
+    checkInput();
     checkSubs();
     lv_task_handler();
   }
 
-  void brightness(uint8_t b) { lcd.setBrightness(b); }
-  uint8_t brightness() { return lcd.getBrightness(); }
+  void brightness(uint8_t b) { m_Lcd.setBrightness(b); }
+  uint8_t brightness() { return m_Lcd.getBrightness(); }
 
 protected:
-  lv_disp_buf_t disp_buf;
-  lv_color_t buf1[LV_HOR_RES_MAX * 10];
-  lv_color_t buf2[LV_HOR_RES_MAX * 10];
+  Button m_Button;
+  lv_disp_buf_t m_DispBuf;
+  lv_color_t m_Buf1[LV_HOR_RES_MAX * 10];
+  lv_color_t m_Buf2[LV_HOR_RES_MAX * 10];
   Ticker m_Ticker;
-  LGFX lcd;
+  LGFX m_Lcd;
   int m_Brightness;
+
+  void checkInput() {
+    m_Button.read();
+    if(brightness() == 0 && m_Button.wasPressed()) {
+      brightness(200);
+    } else if(brightness() > 0 && m_Button.releasedFor(20*1000)) {
+      brightness(0);
+    }
+  }
 
   void checkSubs() {
     PowerData powerData;
